@@ -96,7 +96,8 @@ Os comandos antigos continuam valendo. Mudanças de comportamento a conhecer:
   como na legenda, em vez de um degradê linear que comprimia as faixas desiguais.
 - **escalas.config**: `p99` agora é a escala dos mapas interpolados (50–150, a do interpola.config);
   a antiga `p99` dos mapas de estações (10–100) chama-se `p99_estacoes`.
-  Os `escalas.py` e o `interpola.config` continuam nas pastas, mas não são mais lidos.
+  Os antigos `escalas.py`, `interpola.config`, `interpolacao_novo_09.py` e `plota_mapas_interpolados.py`
+  saíram do repositório (cópias em `_backup_20261110/` na pasta local e no histórico do git).
 - **02 download**: cache em `cache_<nome>/` (apague a pasta, ou use `--sem-cache`, para baixar de novo);
   `--consistencia ambos` baixa bruto + consistido e prefere o consistido.
 - **05 cluster**: K testado até raiz(n) (como antes) e no máximo `--kmax`; clusters numerados do menor para
