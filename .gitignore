@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Saídas geradas pelos scripts (dados e figuras)
+*.xlsx
+*.xls
+*.csv
+*.png
+*.nc
+*.kml
+*.pptx
+cache_*/
+historico*.csv
+
+# Travas do Excel / sistema
+~$*
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Pastas de trabalho locais
+_backup_*/
+_to_delete/
+.agents/
+
+# Shapefiles: versiona os componentes, ignora zips e índices do ArcGIS
+00_STUFF/*.zip
+*.gsr2
