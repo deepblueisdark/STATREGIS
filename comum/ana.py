@@ -24,14 +24,45 @@ except ImportError:  # pragma: no cover
 
 URL_ANA = "http://telemetriaws1.ana.gov.br/ServiceANA.asmx/"
 
+# Nome exato usado pela ANA no campo nmEstado (estados e países com estações no HidroWeb).
 UF_ANA_MAP = {
+    # Estados do Brasil
     "AC": "ACRE", "AL": "ALAGOAS", "AP": "AMAPÁ", "AM": "AMAZONAS", "BA": "BAHIA", "CE": "CEARÁ",
     "DF": "DISTRITO FEDERAL", "ES": "ESPÍRITO SANTO", "GO": "GOIÁS", "MA": "MARANHÃO",
     "MT": "MATO GROSSO", "MS": "MATO GROSSO DO SUL", "MG": "MINAS GERAIS", "PA": "PARÁ",
     "PB": "PARAÍBA", "PR": "PARANÁ", "PE": "PERNAMBUCO", "PI": "PIAUÍ", "RJ": "RIO DE JANEIRO",
     "RN": "RIO GRANDE DO NORTE", "RS": "RIO GRANDE DO SUL", "RO": "RONDÔNIA", "RR": "RORAIMA",
     "SC": "SANTA CATARINA", "SP": "SÃO PAULO", "SE": "SERGIPE", "TO": "TOCANTINS",
+    # Países
+    "ARG": "ARGENTINA", "BOL": "BOLÍVIA", "CHL": "CHILE", "COL": "COLÔMBIA", "ECU": "EQUADOR",
+    "GUF": "GUIANA FRANCESA", "GUY": "GUIANA", "PRY": "PARAGUAI", "PER": "PERU",
+    "SUR": "SURINAME", "URY": "URUGUAI", "VEN": "VENEZUELA",
 }
+
+
+def _sem_acento(texto):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c)).upper().strip()
+
+
+def resolver_uf(valor):
+    """Sigla ('BA', 'arg') ou nome com/sem acento ('Bahia', 'colombia') -> nome exato da ANA.
+
+    Levanta ValueError se não estiver na tabela UF_ANA_MAP.
+    """
+    chave = _sem_acento(str(valor))
+    if chave in UF_ANA_MAP:
+        return UF_ANA_MAP[chave]
+    for nome in UF_ANA_MAP.values():
+        if _sem_acento(nome) == chave:
+            return nome
+    raise ValueError(f"UF/país '{valor}' não reconhecido. Use uma destas siglas:\n{tabela_ufs()}")
+
+
+def tabela_ufs():
+    itens = [f"{k}={v}" for k, v in UF_ANA_MAP.items()]
+    return "\n".join("  " + ", ".join(itens[i:i + 6]) for i in range(0, len(itens), 6))
+
 
 CAMPOS_INVENTARIO = [
     ("Codigo", "Codigo"), ("Nome", "Nome"), ("Tipo", "TipoEstacao"), ("Latitude", "Latitude"),

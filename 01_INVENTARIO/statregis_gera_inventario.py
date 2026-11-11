@@ -24,7 +24,7 @@ matplotlib.use("Agg")
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 
-from comum.ana import UF_ANA_MAP, ServiceANA, eh_pluviometrica
+from comum.ana import ServiceANA, eh_pluviometrica, resolver_uf, tabela_ufs
 from comum.graficos import ler_shape
 
 
@@ -70,17 +70,23 @@ def plot_station_map(inv, xlsx, shape=None, fundo=None):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Inventário de estações da ANA com mapa.")
+    p = argparse.ArgumentParser(description="Inventário de estações da ANA com mapa.",
+                                epilog="Siglas aceitas em -u (estados e países):\n" + tabela_ufs(),
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("-x", "--xls", required=True, help="Excel de saída")
     p.add_argument("-s", "--shapefile", help="Shapefile para filtrar espacialmente (opcional)")
-    p.add_argument("-u", "--uf", help="UF (sigla ou nome) para filtrar na consulta (opcional)")
+    p.add_argument("-u", "--uf", help="Estado ou país: sigla (BA, RJ, ARG...) ou nome, com ou sem acento. "
+                        "Sem -u: Brasil inteiro. Lista completa no fim desta ajuda.")
     p.add_argument("--tipo", choices=["2", "1", "todas"], default="2",
                    help="2=pluviométricas (padrão), 1=fluviométricas, todas")
     p.add_argument("--fundo", help="Shapefile de fundo do mapa (opcional)")
     a = p.parse_args()
 
     ana = ServiceANA()
-    estado = UF_ANA_MAP.get(a.uf.upper(), a.uf) if a.uf else ""
+    try:
+        estado = resolver_uf(a.uf) if a.uf else ""
+    except ValueError as e:
+        p.error(str(e))
     print(f"Gerando inventário: {estado or 'Brasil inteiro'}...")
     try:
         inv = ana.inventario(estado=estado, tipo="" if a.tipo == "todas" else a.tipo)

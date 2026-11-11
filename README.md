@@ -27,6 +27,15 @@ Detalhes e histórico das correções em `ANALISE_STATREGIS.md`.
 pip install -r requirements.txt
 ```
 
+## Estados e países (`-u` do inventário)
+
+Aceita a sigla ou o nome, com ou sem acento. Sem `-u`, consulta o Brasil inteiro.
+
+- **Estados:** AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO
+- **Países:** ARG (Argentina), BOL (Bolívia), CHL (Chile), COL (Colômbia), ECU (Equador), GUF (Guiana Francesa), GUY (Guiana), PRY (Paraguai), PER (Peru), SUR (Suriname), URY (Uruguai), VEN (Venezuela)
+
+A tabela completa fica em `comum/ana.py` (`UF_ANA_MAP`) e aparece em `python statregis_gera_inventario.py --help`.
+
 ## Exemplo rápido
 
 ```bash
