@@ -16,10 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
-import xarray as xr
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
 from comum import escalas
@@ -38,6 +36,7 @@ def main():
                    help="Nome de paleta do escalas.config ou lista de cores matplotlib")
     p.add_argument("--variavel", default=None, help="Variável do NetCDF (padrão: primeira com 2 dimensões)")
     a = p.parse_args()
+    import xarray as xr
 
     ds = xr.open_dataset(a.netcdf)
     nome = a.variavel or next(v for v in ds.data_vars if ds[v].ndim == 2)
@@ -59,6 +58,7 @@ def main():
     cb = fig.colorbar(cf, ax=ax, ticks=niveis, label=unidade)
     cb.ax.set_yticklabels([f"{v:g}" for v in niveis])
     if a.shapefile:
+        import geopandas as gpd
         g = gpd.read_file(a.shapefile)
         g = g.to_crs("EPSG:4326") if g.crs else g
         g.boundary.plot(ax=ax, color="black", linewidth=1)

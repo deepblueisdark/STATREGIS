@@ -40,7 +40,7 @@ def parse_args():
     p.add_argument("-x", "--xlsx", required=True, help="Excel do inventário (saída do 01)")
     p.add_argument("-n", "--nome", required=True, help="Nome do caso, ex: saopaulo")
     p.add_argument("-l", "--limite", type=float, default=1.0, help="Limite de chuva LDU em mm (padrão 1.0)")
-    p.add_argument("--idv-minimo", type=float, default=None, help="Exclui estações com IDV abaixo deste % (0-100)")
+    p.add_argument("--idv-minimo", type=float, default=None, help="Exclui estações com IDV abaixo deste %% (0-100)")
     p.add_argument("-i", "--inicio", default="", help="Data inicial YYYY-MM-DD")
     p.add_argument("-f", "--fim", default="", help="Data final YYYY-MM-DD")
     p.add_argument("-s", "--shapefile", default="", help="Shapefile para os mapas")
