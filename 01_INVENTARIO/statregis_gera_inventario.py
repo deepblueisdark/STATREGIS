@@ -4,7 +4,10 @@
 #
 # Uso:
 #   python statregis_gera_inventario.py -x inventario_RJ.xlsx -u RJ -s ../00_STUFF/RIODEJANEIROPoly.shp
-#   python statregis_gera_inventario.py -x inv_serra.xlsx -u RJ -s ../00_STUFF/buffer_...Poly.shp --tipo 2
+#   python statregis_gera_inventario.py -x inv_serra.xlsx -u RJ -s ../00_STUFF/buffer_...Poly.shp
+#
+# Por padrão traz só estações PLUVIOMÉTRICAS (o resto do STATREGIS só trabalha com chuva).
+# Use --tipo todas para incluir as fluviométricas.
 #
 # Correções: o fundo 'naturalearth_lowres' foi removido do geopandas >= 1.0 (o mapa quebrava);
 # agora o fundo é o próprio shapefile (ou --fundo). Estações em polígonos sobrepostos não
@@ -21,7 +24,7 @@ matplotlib.use("Agg")
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 
-from comum.ana import UF_ANA_MAP, ServiceANA
+from comum.ana import UF_ANA_MAP, ServiceANA, eh_pluviometrica
 from comum.graficos import ler_shape
 
 
@@ -71,7 +74,8 @@ def main():
     p.add_argument("-x", "--xls", required=True, help="Excel de saída")
     p.add_argument("-s", "--shapefile", help="Shapefile para filtrar espacialmente (opcional)")
     p.add_argument("-u", "--uf", help="UF (sigla ou nome) para filtrar na consulta (opcional)")
-    p.add_argument("--tipo", default="", help="Tipo de estação na ANA: 1=fluviométrica, 2=pluviométrica (padrão: todas)")
+    p.add_argument("--tipo", choices=["2", "1", "todas"], default="2",
+                   help="2=pluviométricas (padrão), 1=fluviométricas, todas")
     p.add_argument("--fundo", help="Shapefile de fundo do mapa (opcional)")
     a = p.parse_args()
 
@@ -79,10 +83,14 @@ def main():
     estado = UF_ANA_MAP.get(a.uf.upper(), a.uf) if a.uf else ""
     print(f"Gerando inventário: {estado or 'Brasil inteiro'}...")
     try:
-        inv = ana.inventario(estado=estado, tipo=a.tipo)
+        inv = ana.inventario(estado=estado, tipo="" if a.tipo == "todas" else a.tipo)
     except Exception as e:
         sys.exit(f"Erro ao acessar a ANA: {e}")
-    print(f"{len(inv)} estações retornadas.")
+    if a.tipo != "todas" and "Tipo" in inv.columns:   # garante o filtro mesmo se a ANA ignorar tpEst
+        quer_pluvio = a.tipo == "2"
+        inv = inv[inv["Tipo"].map(eh_pluviometrica) == quer_pluvio]
+    rotulo = {"2": "pluviométricas", "1": "fluviométricas", "todas": "(todos os tipos)"}[a.tipo]
+    print(f"{len(inv)} estações {rotulo} retornadas.")
 
     shape = ler_shape(a.shapefile) if a.shapefile else None
     if a.shapefile and shape is None:

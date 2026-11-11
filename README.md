@@ -10,7 +10,7 @@ Autor: Reginaldo Ventura de Sá — reginaldo.venturadesa@gmail.com
 | Etapa | Script | Faz |
 |---|---|---|
 | 00 | `00_STUFF/` | Shapefiles das áreas de estudo |
-| 01 | `01_INVENTARIO/statregis_gera_inventario.py` | Inventário de estações da ANA (por UF e/ou shapefile) + mapa |
+| 01 | `01_INVENTARIO/statregis_gera_inventario.py` | Inventário de estações pluviométricas da ANA (por UF e/ou shapefile) + mapa |
 | 02 | `02_DOWNLOAD_E_PROCESSO/statregis_download_processa.py` | Baixa as séries de chuva do inventário e gera o sumário |
 | 02 | `02_DOWNLOAD_E_PROCESSO/statregis_processa_dados.py` | Recalcula o sumário para outro período/critério sem baixar de novo |
 | 03 | `03_PLOTA_MAPAS/` | Mapas de estações (planilhas) e de NetCDF interpolados |
@@ -31,7 +31,7 @@ pip install -r requirements.txt
 
 ```bash
 cd 01_INVENTARIO
-python statregis_gera_inventario.py -x inventario_RJ.xlsx -u RJ -s ../00_STUFF/RIODEJANEIROPoly.shp --tipo 2
+python statregis_gera_inventario.py -x inventario_RJ.xlsx -u RJ -s ../00_STUFF/RIODEJANEIROPoly.shp
 
 cd ../02_DOWNLOAD_E_PROCESSO
 python statregis_download_processa.py -x ../01_INVENTARIO/inventario_RJ.xlsx -n RJ -i 1991-01-01 -f 2020-12-31

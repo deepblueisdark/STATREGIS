@@ -18,6 +18,7 @@
 # - Datas enviadas no formato dd/mm/aaaa e série cortada localmente ao período.
 # - --consistencia 1|2|ambos (padrão 1 = bruto, como antes; 'ambos' prefere o consistido).
 # - Não depende mais de um escalas.py na pasta: usa ../escalas.config.
+# - Estações fluviométricas do inventário (Tipo 1) são ignoradas; só chuva é baixada.
 # =============================================================================
 import argparse
 import csv
@@ -29,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 
 from comum import escalas
-from comum.ana import ServiceANA
+from comum.ana import ServiceANA, eh_pluviometrica
 from comum.codigos import normalizar_codigo
 from comum.estatisticas import calcular_sumario, gravar_sumario
 from comum.graficos import linha_tempo_estacoes, plota_estacoes
@@ -51,6 +52,8 @@ def parse_args():
                    help="1=bruto (padrão), 2=consistido, ambos=prefere consistido")
     p.add_argument("--cache", default=None, help="Pasta de cache (padrão: cache_<nome>)")
     p.add_argument("--sem-cache", action="store_true", help="Não usa nem grava cache")
+    p.add_argument("--incluir-fluvio", action="store_true",
+                   help="Não descarta estações fluviométricas do inventário (padrão: descarta)")
     p.add_argument("--pausa", type=float, default=0.0, help="Segundos de espera entre consultas à ANA")
     a = p.parse_args()
     if a.idv_minimo is not None and not 0 <= a.idv_minimo <= 100:
@@ -73,6 +76,11 @@ def main():
     if "Codigo" not in inv.columns:
         sys.exit("Erro: o inventário precisa da coluna 'Codigo'.")
     inv["Codigo"] = inv["Codigo"].map(normalizar_codigo)
+    if "Tipo" in inv.columns and not a.incluir_fluvio:
+        pluvio = inv["Tipo"].map(eh_pluviometrica)
+        if (~pluvio).any():
+            print(f"[INFO] {int((~pluvio).sum())} estações fluviométricas do inventário ignoradas (só chuva).")
+        inv = inv[pluvio].reset_index(drop=True)
 
     ana = ServiceANA(pausa=a.pausa)
     series, registros = [], []

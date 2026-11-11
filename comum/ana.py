@@ -42,6 +42,16 @@ CAMPOS_INVENTARIO = [
 ]
 
 
+def eh_pluviometrica(tipo):
+    """TipoEstacao da ANA: 1 = fluviométrica, 2 = pluviométrica. Vazio/desconhecido -> mantém."""
+    if tipo is None or (isinstance(tipo, float) and np.isnan(tipo)):
+        return True
+    texto = str(tipo).strip().lower()
+    if texto in ("1", "1.0") or texto.startswith("flu"):
+        return False
+    return True
+
+
 def _local(tag):
     return tag.rsplit("}", 1)[-1]
 
