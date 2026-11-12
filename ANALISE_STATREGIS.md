@@ -102,3 +102,49 @@ Os comandos antigos continuam valendo. Mudanças de comportamento a conhecer:
   `--consistencia ambos` baixa bruto + consistido e prefere o consistido.
 - **05 cluster**: K testado até raiz(n) (como antes) e no máximo `--kmax`; clusters numerados do menor para
   o maior valor médio; figuras em `./<aba>/`; Köppen pulado se o shapefile não existir (`--shapefile-clima nenhum`).
+
+## 7. Memória: a aba BRUTOS estourava o processo (11/11/2026)
+
+**Sintoma:** com ~1485 estações o processo terminava o download, ficava parado consumindo
+memória (11 GB observados), era morto pelo sistema e **não gerava nem o .xlsx nem o .csv**.
+
+**Causa:** a aba `BRUTOS` tem uma coluna por estação e uma linha por dia. Com 1485 estações
+e 1991–2020 são ~16 milhões de células; na série histórica completa passa de 60 milhões.
+O openpyxl monta um objeto Python por célula **antes** de escrever qualquer byte no disco.
+Medido nesta base, no mesmo quadro de 2000 dias x 1485 estações:
+
+| Gravador | Tempo | Pico de memória | Por célula |
+|---|---|---|---|
+| openpyxl (antes) | 85 s | 1,20 GB | 382 bytes |
+| `comum/planilhas.py` (agora) | 28 s | 0,14 GB | ~1 byte |
+
+Extrapolando o openpyxl para o caso real: 16 M de células = ~6 GB e ~30 min; 68 M = ~24 GB e ~2 h.
+Os 11 GB eram o processo no meio da montagem da planilha. E como o `to_csv` vinha **depois**
+do `to_excel`, o CSV nunca chegava a rodar.
+
+**Armadilha evitada:** a saída natural seria `xlsxwriter` com `constant_memory=True` via
+`pandas.to_excel`. Isso **corrompe os dados em silêncio**: o pandas emite as células coluna a
+coluna e o `constant_memory` descarta tudo que volta para uma linha já fechada. O arquivo sai
+com o tamanho e as datas certos e **todos os valores vazios**. Testado e confirmado.
+Por isso `comum/planilhas.py` escreve linha a linha, na mão, direto no xlsxwriter.
+
+**O que mudou:**
+
+- Novo `comum/planilhas.py`: `gravar_abas` (escrita em streaming, memória constante),
+  `gravar_brutos_csv`, `ler_brutos` e checagem dos limites do .xlsx (1.048.576 linhas, 16.384 colunas).
+- `02 download`: o **CSV dos brutos sai primeiro**, sempre (antes era opcional e vinha depois do
+  xlsx). Se a aba BRUTOS não couber no formato .xlsx, o xlsx sai sem ela e avisa; o CSV tem tudo.
+  `--cvs` virou obsoleto (não faz mal manter nos comandos antigos).
+- `gravar_sumario` e `gravar_consolidado` passaram a usar o mesmo gravador — a aba `ANUAIS`
+  (uma linha por estação e por ano) também chegava a milhões de células.
+- `preparar_brutos`: o `.apply(pd.to_numeric)` refazia as ~1486 colunas mesmo quando já eram
+  float, duplicando o quadro inteiro. Agora converte só as colunas não numéricas.
+- `ler_brutos`: `02 processa_dados` e `04` leem o CSV irmão quando ele existe e está atualizado —
+  ler 16 M de células com openpyxl leva dezenas de minutos; em CSV são segundos.
+- `requirements.txt`: `xlsxwriter>=3.1` (sem ele, o código avisa e recusa planilhas grandes
+  em vez de travar a máquina).
+
+**Verificado:** pipeline completo (02 download → 02 processa → 04) com 1485 estações sintéticas
+em 1991–2020, caso pior sem filtro de IDV: 16.268.728 células gravadas, **pico de 1,68 GB e 218 s**
+do início ao fim. Conferidos 7.404.116 valores um a um entre o CSV e a aba BRUTOS do .xlsx:
+nenhuma diferença, padrão de falhas preservado, inteiros e datas preservados, abas com os mesmos nomes.

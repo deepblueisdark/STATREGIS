@@ -4,6 +4,7 @@ pandas>=2.0
 scipy>=1.9
 matplotlib>=3.6
 openpyxl>=3.1
+xlsxwriter>=3.1
 requests>=2.28
 geopandas>=0.14
 shapely>=2.0

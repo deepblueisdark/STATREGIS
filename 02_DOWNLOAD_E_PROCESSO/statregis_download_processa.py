@@ -33,6 +33,7 @@ from comum import escalas
 from comum.ana import ServiceANA, eh_pluviometrica
 from comum.codigos import normalizar_codigo
 from comum.estatisticas import calcular_sumario, gravar_sumario
+from comum.planilhas import PlanilhaGrandeDemais, gravar_abas, gravar_brutos_csv
 from comum.graficos import linha_tempo_estacoes, plota_estacoes
 
 
@@ -47,7 +48,8 @@ def parse_args():
     p.add_argument("-s", "--shapefile", default="", help="Shapefile para os mapas")
     p.add_argument("-c", "--campo", help="Campo extra para mapear (padrão: IDV e Média mm/ano)")
     p.add_argument("-b", "--bounds", default="", help="Intervalos do campo extra: nome no escalas.config ou 10,20,30")
-    p.add_argument("--cvs", "--csv", dest="cvs", action="store_true", help="Também salva os brutos em CSV")
+    p.add_argument("--cvs", "--csv", dest="cvs", action="store_true",
+                   help="(obsoleto) o CSV dos brutos passou a ser sempre gravado")
     p.add_argument("--consistencia", choices=["1", "2", "ambos"], default="1",
                    help="1=bruto (padrão), 2=consistido, ambos=prefere consistido")
     p.add_argument("--cache", default=None, help="Pasta de cache (padrão: cache_<nome>)")
@@ -113,6 +115,7 @@ def main():
         sys.exit("Nenhum dado de chuva baixado. Encerrando.")
 
     brutos = pd.concat(series, axis=1, sort=True)
+    series.clear()  # libera as 1485 séries individuais; daqui em diante só o quadro importa
     # Estações sem nenhum dado entram como coluna vazia (aparecem em Excluidas_IDV quando há --idv-minimo).
     brutos = brutos.reindex(columns=list(dict.fromkeys(inv["Codigo"])))
     brutos.index.name = "date"
@@ -125,14 +128,26 @@ def main():
     hist_ok = hist[hist["status"].isin(["OK", "EXCLUDED_IDV"])]
 
     brutos_saida = res["BRUTOS"]
-    with pd.ExcelWriter(f"dados_{caso}.xlsx", engine="openpyxl") as w:
-        brutos_saida.reset_index().rename(columns={"Data": "date"}).to_excel(w, sheet_name="BRUTOS", index=False)
-        res["Excluidas_IDV"].to_excel(w, sheet_name="Excluidas_IDV", index=False)
-        hist_ok.to_excel(w, sheet_name="Historico", index=False)
-    print(f"✅ Brutos e histórico: dados_{caso}.xlsx ({brutos_saida.shape[1]} estações)")
-    if a.cvs:
-        brutos_saida.to_csv(f"dados_{caso}.csv", index_label="date", encoding="utf-8-sig")
-        print(f"✅ CSV: dados_{caso}.csv")
+    dias, estacoes = brutos_saida.shape
+
+    # O CSV sai PRIMEIRO. É rápido, usa memória baixa e não tem limite de tamanho:
+    # assim os dados baixados ficam seguros em disco antes de qualquer etapa pesada.
+    # (Antes o xlsx vinha primeiro e, quando ele estourava a memória, o CSV nunca saía.)
+    gravar_brutos_csv(brutos_saida, f"dados_{caso}.csv")
+    print(f"✅ CSV dos brutos: dados_{caso}.csv ({dias} dias x {estacoes} estações)")
+
+    abas = {"BRUTOS": (brutos_saida, "date"),
+            "Excluidas_IDV": res["Excluidas_IDV"],
+            "Historico": hist_ok}
+    try:
+        gravar_abas(f"dados_{caso}.xlsx", abas)
+        print(f"✅ Brutos e histórico: dados_{caso}.xlsx ({estacoes} estações)")
+    except PlanilhaGrandeDemais as e:
+        # Não cabe no formato .xlsx. O CSV acima já tem tudo; o xlsx sai sem os brutos.
+        del abas["BRUTOS"]
+        gravar_abas(f"dados_{caso}.xlsx", abas)
+        print(f"[AVISO] {e}")
+        print(f"✅ Histórico: dados_{caso}.xlsx (brutos só em dados_{caso}.csv)")
 
     gravar_sumario(f"sumario_{caso}.xlsx", res)
     print(f"✅ Sumário: sumario_{caso}.xlsx ({len(res['ANUAL'])} estações; {len(excl)} excluídas por IDV)")

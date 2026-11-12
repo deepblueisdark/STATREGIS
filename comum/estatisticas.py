@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from .codigos import normalizar_codigo
+from .planilhas import gravar_abas
 
 NOMES_MESES = {1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr", 5: "Mai", 6: "Jun",
                7: "Jul", 8: "Ago", 9: "Set", 10: "Out", 11: "Nov", 12: "Dez"}
@@ -114,7 +115,12 @@ def preparar_brutos(df):
     df.index.name = "Data"
     df = df[~df.index.duplicated(keep="first")].sort_index()
     df.columns = [normalizar_codigo(c) for c in df.columns]
-    return df.apply(pd.to_numeric, errors="coerce")
+    # Converte SÓ o que não é numérico. O .apply(pd.to_numeric) antigo refazia as ~1486
+    # colunas mesmo quando já eram float, duplicando o quadro inteiro na memória.
+    nao_numericas = [c for c, t in zip(df.columns, df.dtypes) if not pd.api.types.is_numeric_dtype(t)]
+    for coluna in nao_numericas:
+        df[coluna] = pd.to_numeric(df[coluna], errors="coerce")
+    return df
 
 
 def calcular_sumario(brutos, meta=None, inicio="", fim="", limite=1.0, idv_minimo=None):
@@ -232,19 +238,24 @@ def calcular_sumario(brutos, meta=None, inicio="", fim="", limite=1.0, idv_minim
 
 
 def gravar_sumario(caminho, res, incluir_brutos=False):
-    """Grava o sumário no formato esperado por 04/05/06: ANUAL, ANUAIS, MENSAL, Excluidas_IDV, Jan..Dez."""
-    with pd.ExcelWriter(caminho, engine="openpyxl") as w:
-        if incluir_brutos:
-            res["BRUTOS"].reset_index().to_excel(w, sheet_name="BRUTOS", index=False)
-            res["MEDIA_DIARIA"].to_excel(w, sheet_name="MEDIA_DIARIA", index=False)
-            res["ANUAL"].to_excel(w, sheet_name="ESTATISTICAS", index=False)  # nome antigo, mesmo conteúdo
-        res["ANUAL"].to_excel(w, sheet_name="ANUAL", index=False)
-        res["ANUAIS"].to_excel(w, sheet_name="ANUAIS", index=False)
-        res["MENSAL"].to_excel(w, sheet_name="MENSAL", index=False)
-        res["Excluidas_IDV"].to_excel(w, sheet_name="Excluidas_IDV", index=False)
-        if not incluir_brutos:
-            res["MEDIA_DIARIA"].to_excel(w, sheet_name="MEDIA_DIARIA", index=False)
-        mensal = res["MENSAL"]
-        for mes, nome in NOMES_MESES.items():
-            parte = mensal[mensal["Mes"] == mes] if "Mes" in mensal.columns else mensal
-            parte.to_excel(w, sheet_name=nome, index=False)
+    """Grava o sumário no formato esperado por 04/05/06: ANUAL, ANUAIS, MENSAL, Excluidas_IDV, Jan..Dez.
+
+    Escrita em streaming (comum/planilhas.py). A aba ANUAIS tem uma linha por estação e
+    por ano: com 1485 estações e a série histórica completa passa de 10 milhões de
+    células, que o openpyxl não consegue montar na memória.
+    """
+    abas = {}
+    if incluir_brutos:
+        abas["BRUTOS"] = (res["BRUTOS"], res["BRUTOS"].index.name or "Data")
+        abas["MEDIA_DIARIA"] = res["MEDIA_DIARIA"]
+        abas["ESTATISTICAS"] = res["ANUAL"]  # nome antigo, mesmo conteúdo
+    abas["ANUAL"] = res["ANUAL"]
+    abas["ANUAIS"] = res["ANUAIS"]
+    abas["MENSAL"] = res["MENSAL"]
+    abas["Excluidas_IDV"] = res["Excluidas_IDV"]
+    if not incluir_brutos:
+        abas["MEDIA_DIARIA"] = res["MEDIA_DIARIA"]
+    mensal = res["MENSAL"]
+    for mes, nome in NOMES_MESES.items():
+        abas[nome] = mensal[mensal["Mes"] == mes] if "Mes" in mensal.columns else mensal
+    return gravar_abas(caminho, abas)

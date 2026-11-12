@@ -10,6 +10,7 @@ import pandas as pd
 
 from .codigos import normalizar_codigo
 from .estatisticas import NOMES_MESES
+from .planilhas import gravar_abas
 
 CRITERIOS = ["nenhum", "omm", "anos", "idv"]
 
@@ -89,19 +90,19 @@ def filtrar_historico(historico, codigos, coluna="Codigo"):
 
 
 def gravar_consolidado(caminho, cons, brutos=None, historico=None, extras=None):
-    with pd.ExcelWriter(caminho, engine="openpyxl") as w:
-        cons["ANUAL"].to_excel(w, sheet_name="ANUAL", index=False)
-        mensal = pd.concat([df for df in cons["mensais"].values() if not df.empty] or [pd.DataFrame()],
-                           ignore_index=True)
-        mensal.to_excel(w, sheet_name="MENSAL", index=False)
-        for nome, df in cons["mensais"].items():
-            df.to_excel(w, sheet_name=nome, index=False)
-        cons["ALL"].to_excel(w, sheet_name="ALL", index=False)
-        cons["MEDIAS"].to_excel(w, sheet_name="MEDIAS", index=False)
-        cons["ESTACOES_ANALISE"].to_excel(w, sheet_name="ESTACOES_ANALISE", index=False)
-        if brutos is not None:
-            filtrar_brutos(brutos, cons["comuns"]).to_excel(w, sheet_name="BRUTOS", index=False)
-        if historico is not None:
-            filtrar_historico(historico, cons["comuns"]).to_excel(w, sheet_name="Historico", index=False)
-        for nome, df in (extras or {}).items():
-            df.to_excel(w, sheet_name=nome[:31], index=False)
+    """Grava o arquivo consolidado em streaming (ver comum/planilhas.py)."""
+    abas = {"ANUAL": cons["ANUAL"]}
+    abas["MENSAL"] = pd.concat([df for df in cons["mensais"].values() if not df.empty] or [pd.DataFrame()],
+                               ignore_index=True)
+    for nome, df in cons["mensais"].items():
+        abas[nome] = df
+    abas["ALL"] = cons["ALL"]
+    abas["MEDIAS"] = cons["MEDIAS"]
+    abas["ESTACOES_ANALISE"] = cons["ESTACOES_ANALISE"]
+    if brutos is not None:
+        abas["BRUTOS"] = filtrar_brutos(brutos, cons["comuns"])
+    if historico is not None:
+        abas["Historico"] = filtrar_historico(historico, cons["comuns"])
+    for nome, df in (extras or {}).items():
+        abas[nome[:31]] = df
+    return gravar_abas(caminho, abas)

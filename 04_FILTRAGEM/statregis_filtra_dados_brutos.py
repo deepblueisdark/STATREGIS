@@ -17,6 +17,7 @@ import pandas as pd
 
 from comum.codigos import normalizar_codigo
 from comum.filtragem import filtrar_brutos, filtrar_historico
+from comum.planilhas import gravar_abas, ler_brutos
 
 
 def main():
@@ -46,14 +47,12 @@ def main():
     if not codigos:
         p.error("Nenhum código encontrado na aba de seleção.")
 
-    brutos = pd.read_excel(brutos_arq, sheet_name=a.aba_brutos)
+    brutos = ler_brutos(brutos_arq, a.aba_brutos)
     hist = pd.read_excel(brutos_arq, sheet_name=a.aba_historico)
     b_f = filtrar_brutos(brutos, codigos)
     h_f = filtrar_historico(hist, codigos, a.coluna_codigo)
     saida.parent.mkdir(parents=True, exist_ok=True)
-    with pd.ExcelWriter(saida, engine="openpyxl") as w:
-        b_f.to_excel(w, sheet_name=a.aba_brutos, index=False)
-        h_f.to_excel(w, sheet_name=a.aba_historico, index=False)
+    gravar_abas(saida, {a.aba_brutos: b_f, a.aba_historico: h_f})
 
     achados = {normalizar_codigo(c) for c in b_f.columns[1:]}
     faltam = sorted(codigos - achados)

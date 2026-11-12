@@ -23,6 +23,7 @@ import pandas as pd
 from comum import escalas
 from comum.estatisticas import NOMES_MESES, calcular_sumario, gravar_sumario
 from comum.filtragem import CRITERIOS, consolidar, gravar_consolidado
+from comum.planilhas import ler_brutos
 from comum.graficos import ler_shape, linha_tempo_estacoes, mapas_filtragem, plota_estacoes
 
 APELIDOS_CAMPO = {"Média*365": "Média mm/ano", "Media*365": "Média mm/ano"}
@@ -59,7 +60,7 @@ def parse_args():
 
 def main():
     a = parse_args()
-    brutos = pd.read_excel(a.entrada, sheet_name="BRUTOS", engine="openpyxl")
+    brutos = ler_brutos(a.entrada)
     hist = pd.read_excel(a.entrada, sheet_name="Historico", engine="openpyxl")
     res = calcular_sumario(brutos, hist, a.inicio, a.fim, a.limite, a.idv_minimo)
     gravar_sumario(a.saida, res, incluir_brutos=True)
